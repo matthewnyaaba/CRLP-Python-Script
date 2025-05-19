@@ -1,0 +1,206 @@
+Complete Script 
+!pip install --upgrade httpx (Rub this first)
+
+import openai
+from docx import Document
+from IPython.display import FileLink, display
+
+# Set your API key - remember to secure this in a production environment
+client = openai.OpenAI(api_key="env")  # Replace with your API key
+
+# Cultural knowledge database - predefined cultural information by region
+CULTURAL_DATABASE = {
+    "Ghana": {
+        "Ashanti": {
+            "dominant_language": "Twi",
+            "additional_languages": "English",
+            "cultural_background": "Ashanti culture",
+            "belief_systems": "Traditional beliefs, Christianity",
+            "cultural_artifacts": "Kente cloth, stools, Adinkra symbols",
+            "local_activities": "Gold mining, cocoa farming, woodcarving",
+            "indigenous_knowledge": ["Pottery", "Traditional medicine", "Weaving"],
+            "cultural_traditions": ["Adae ceremonies", "Durbar festivals"]
+        },
+        "Accra": {
+            "dominant_language": "Ga",
+            "additional_languages": "English",
+            "cultural_background": "Ga-Adangbe culture",
+            "belief_systems": "Traditional beliefs, Christianity, Islam",
+            "cultural_artifacts": "Fishing nets, drums, beads",
+            "local_activities": "Fishing, trading, food processing",
+            "indigenous_knowledge": ["Navigation", "Food preservation", "Drumming"],
+            "cultural_traditions": ["Homowo festival", "Twins yam festival"]
+        },
+        # Add more regions as needed
+    },
+    # Add more countries as needed
+}
+
+def get_cultural_info(country, region):
+    """Retrieve cultural information from database or provide defaults"""
+    try:
+        return CULTURAL_DATABASE[country][region]
+    except KeyError:
+        # Default cultural info if not found
+        return {
+            "dominant_language": "Local language",
+            "additional_languages": "Official language",
+            "cultural_background": "Local cultural traditions",
+            "belief_systems": "Traditional beliefs",
+            "cultural_artifacts": "Local artifacts",
+            "local_activities": "Regional activities",
+            "indigenous_knowledge": ["Local knowledge systems"],
+            "cultural_traditions": ["Regional celebrations"]
+        }
+
+def generate_full_prompt(parameters):
+    country = parameters["country"]
+    region = parameters["region"]
+    grade = parameters["grade"]
+    school_level = parameters["school_level"]
+    subject = parameters["subject"]
+    topic = parameters["topic"]
+    
+    # Get cultural information from database
+    cultural_info = get_cultural_info(country, region)
+    
+    return f"""
+    Develop a detailed, culturally responsive lesson plan for teaching {topic} within {subject} 
+    to {grade} students in {school_level} in {region}, {country}.
+    
+    Consider the following parameters:
+    - Class size: {parameters["class_size"]}
+    - Lesson duration: {parameters["lesson_duration"]} minutes
+    - Curriculum standards: {parameters.get("curriculum_standards", f"{country} Education Standards for {subject}")}
+    - Learning objectives: {parameters["learning_objectives"]}
+    - Dominant language: {cultural_info["dominant_language"]}
+    - Additional languages: {cultural_info["additional_languages"]}
+    - Cultural background: {cultural_info["cultural_background"]}
+    - Belief systems: {cultural_info["belief_systems"]}
+    - Cultural artifacts: {cultural_info["cultural_artifacts"]}
+    - Local activities: {cultural_info["local_activities"]}
+    - Indigenous knowledge: {", ".join(cultural_info["indigenous_knowledge"])}
+    - Cultural traditions: {", ".join(cultural_info["cultural_traditions"])}
+    
+    Structure the lesson plan with the following sections:
+    1. Title and Overview
+    2. Learning Objectives
+    3. Materials Needed (including locally available materials)
+    4. Prior Knowledge Required
+    5. Introduction/Hook (incorporating cultural elements)
+    6. Main Activities (step-by-step, with timing)
+    7. Assessment Methods
+    8. Differentiation Strategies
+    9. Extension Activities
+    10. Reflection Questions
+    
+    Integrate cultural context throughout the lesson plan. Include at least 3 specific examples of how indigenous knowledge intersects with the scientific concepts being taught.
+    """
+
+def generate_lesson_plan(parameters):
+    prompt = generate_full_prompt(parameters)
+    
+    # Using new API syntax for v1+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are an expert curriculum developer specializing in culturally responsive education."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=3000
+    )
+    
+    return response.choices[0].message.content
+
+def save_to_word(text, filename):
+    doc = Document()
+    doc.add_heading('Culturally Responsive Lesson Plan', 0)
+    
+    # Split the text by lines and add to document with better formatting
+    paragraphs = text.split('\n')
+    for para in paragraphs:
+        if para.strip():  # Skip empty lines
+            # Check if this looks like a header
+            if any(para.startswith(str(i) + '.') for i in range(1, 11)) or ':' in para[:20]:
+                doc.add_heading(para, level=1)
+            else:
+                doc.add_paragraph(para)
+    
+    doc.save(filename)
+    return filename
+
+# Function to get user input (for interactive use)
+def get_user_input():
+    print("=== Culturally Responsive Lesson Plan Generator ===")
+    print("Please provide the following information:")
+    
+    country = input("Country (e.g., Ghana): ")
+    region = input("Region (e.g., Ashanti): ")
+    grade = input("Grade level (e.g., 7): ")
+    school_level = input("School level (e.g., Junior High School): ")
+    subject = input("Subject (e.g., Science): ")
+    topic = input("Topic (e.g., Matter): ")
+    class_size = input("Class size (e.g., 30): ")
+    lesson_duration = input("Lesson duration in minutes (e.g., 50): ")
+    learning_objectives = input("Learning objectives: ")
+    
+    # Create parameters dictionary with user input
+    parameters = {
+        "country": country,
+        "region": region,
+        "grade": grade,
+        "school_level": school_level,
+        "subject": subject,
+        "topic": topic,
+        "class_size": class_size,
+        "lesson_duration": lesson_duration,
+        "learning_objectives": learning_objectives,
+        # Cultural info will be automatically added
+    }
+    
+    return parameters
+
+# Main execution
+if __name__ == "__main__":
+    # Option 1: Use predefined parameters
+    parameters = {
+        "country": "Ghana",
+        "region": "Ashanti",
+        "grade": "7",
+        "school_level": "Junior High School",
+        "subject": "Science",
+        "topic": "Matter",
+        "class_size": "30",
+        "lesson_duration": "50",
+        "learning_objectives": "Understanding properties and states of matter",
+    }
+    
+    # Option 2: Uncomment to use interactive input instead
+    # parameters = get_user_input()
+    
+    # Generate the lesson plan
+    print("\nGenerating lesson plan...")
+    lesson = generate_lesson_plan(parameters)
+    
+    # Print to console
+    print("\n=== GENERATED LESSON PLAN ===\n")
+    print(lesson)
+    
+    # Save as text file
+    text_filename = "generated_lesson_plan.txt"
+    with open(text_filename, "w", encoding="utf-8") as f:
+        f.write(lesson)
+    
+    # Save as Word document
+    word_filename = "generated_lesson_plan.docx"
+    save_to_word(lesson, word_filename)
+    
+    # Display download links (works in Jupyter)
+    try:
+        display(FileLink(text_filename, result_html_prefix="📄 Download TXT file: "))
+        display(FileLink(word_filename, result_html_prefix="📝 Download Word DOCX: "))
+        print(f"\nLesson plan generated successfully!")
+    except NameError:
+        # Not running in Jupyter
+        print(f"\nLesson plan saved as {text_filename} and {word_filename}")

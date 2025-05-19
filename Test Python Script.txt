@@ -1,0 +1,43 @@
+Test Script 
+!pip install --upgrade httpx (Rub this first)
+
+
+from openai import OpenAI
+from docx import Document
+from IPython.display import FileLink, display
+
+# Set your API key (replace "pv" with your real key if not already set)
+client = OpenAI(api_key="env")
+
+prompt = (
+    "Design a culturally responsive science lesson on 'Matter' for Grade 7 students in Ashanti Region, "
+    "Ghana, using Twi and integrating indigenous knowledge. Include lesson title, objectives, cultural context, "
+    "key vocabulary, activities, assessment, and resources."
+)
+
+# New syntax for v1+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a culturally responsive curriculum designer."},
+        {"role": "user", "content": prompt}
+    ],
+    temperature=0.7,
+    max_tokens=2000
+)
+
+lesson_plan = response.choices[0].message.content
+
+# Save as .txt
+with open("lesson_plan.txt", "w", encoding="utf-8") as f:
+    f.write(lesson_plan)
+
+# Save as .docx
+doc = Document()
+for line in lesson_plan.split('\n'):
+    doc.add_paragraph(line)
+doc.save("lesson_plan.docx")
+
+# Provide download links
+display(FileLink("lesson_plan.txt", result_html_prefix="📄 Download TXT file: "))
+display(FileLink("lesson_plan.docx", result_html_prefix="📝 Download Word DOCX: "))
