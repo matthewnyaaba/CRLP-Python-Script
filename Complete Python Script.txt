@@ -1,5 +1,5 @@
 Complete Script 
-!pip install --upgrade httpx (Rub this first)
+!pip install --upgrade httpx (Run this first)
 
 import openai
 from docx import Document
